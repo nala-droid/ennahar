@@ -2,7 +2,7 @@ name: Ennahar News Updates
 
 on:
   schedule:
-    - cron: "*/15 * * * *"   # checks every 15 minutes
+    - cron: "*/5 * * * *"   # checks every 5 minutes
   workflow_dispatch:
 
 permissions:
