@@ -1,9 +1,12 @@
-name: Daily Ennahar News
+name: Ennahar News Updates
 
 on:
   schedule:
-    - cron: "0 8 * * *"   # 08:00 UTC = 09:00 Algiers time (Algeria has no DST)
-  workflow_dispatch:        # adds a "Run workflow" button on GitHub for manual testing
+    - cron: "*/15 * * * *"   # checks every 15 minutes
+  workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   post-news:
@@ -20,3 +23,9 @@ jobs:
       - run: python fetch_and_post.py
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+
+      - name: Save seen articles
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "Update seen articles"
+          file_pattern: seen_articles.json
