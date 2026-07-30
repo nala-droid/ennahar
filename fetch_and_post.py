@@ -154,7 +154,7 @@ def main():
 
 
 if __name__ == "__main__":
-    main()}
+    main()
 
 
 def load_seen() -> set:
