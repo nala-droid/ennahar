@@ -2,7 +2,7 @@ name: Ennahar News Updates
 
 on:
   schedule:
-    - cron: "*/5 * * * *"   # checks every 5 minutes
+    - cron: "*/5 * * * *"
   workflow_dispatch:
 
 permissions:
@@ -28,8 +28,15 @@ jobs:
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
 
-      - name: Save seen articles
-        uses: stefanzweifel/git-auto-commit-action@v5
-        with:
-          commit_message: "Update seen articles"
-          file_pattern: seen_articles.jsonticles.json
+      - name: Commit and push seen articles
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add seen_articles.json
+          if git diff --staged --quiet; then
+            echo "No changes to commit."
+          else
+            git commit -m "Update seen articles"
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
