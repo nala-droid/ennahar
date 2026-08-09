@@ -7,7 +7,8 @@ from deep_translator import GoogleTranslator
 
 RSS_URL = "https://www.ennaharonline.com/feed/"
 WEBHOOK_URL = os.environ["DISCORD_WEBHOOK_URL"]
-EMOJI_LOOKUP_URL = "https://raw.githubusercontent.com/muan/emojilib/main/dist/emoji-en-US.json"
+EMOJI_KEYWORDS_URL = "https://raw.githubusercontent.com/muan/emojilib/main/dist/emoji-en-US.json"
+EMOJI_GROUPS_URL = "https://raw.githubusercontent.com/muan/unicode-emoji-json/main/data-by-emoji.json"
 
 MAX_ARTICLES_PER_RUN = 5
 MAX_TITLE_LENGTH = 256
@@ -22,6 +23,9 @@ DEFAULT_FLAG = "🇩🇿"
 MAX_FLAGS = 3
 MAX_TOPICS = 2
 
+# Emoji categories to never use as topic emoji — faces, expressions, people, body parts, gestures
+EXCLUDED_GROUPS = {"Smileys & Emotion", "People & Body"}
+
 COUNTRY_FLAGS = {
     "algeria": "🇩🇿", "morocco": "🇲🇦", "tunisia": "🇹🇳", "libya": "🇱🇾", "egypt": "🇪🇬",
     "mauritania": "🇲🇷", "mali": "🇲🇱", "niger": "🇳🇪", "sudan": "🇸🇩",
@@ -33,15 +37,7 @@ COUNTRY_FLAGS = {
     "spain": "🇪🇸", "italy": "🇮🇹", "germany": "🇩🇪", "united kingdom": "🇬🇧", "britain": "🇬🇧",
 }
 
-# Words too generic to be a meaningful topic signal (mostly leftover from
-# face/emotion emoji keyword lists) — always skipped even if matched.
-GENERIC_SKIP_WORDS = {
-    "face", "eye", "eyes", "mouth", "open", "happy", "sad", "smile", "smiling",
-    "this", "like", "good", "big", "one", "out", "up", "down", "closed", "cool",
-    "small", "large", "white", "black", "red", "blue", "green", "yellow",
-}
-
-_emoji_keyword_map = None  # cached for the life of one script run
+_emoji_keyword_map = None
 
 
 def load_emoji_keyword_map() -> dict:
@@ -51,16 +47,22 @@ def load_emoji_keyword_map() -> dict:
 
     reverse_map = {}
     try:
-        response = requests.get(EMOJI_LOOKUP_URL, timeout=15)
-        response.raise_for_status()
-        data = response.json()
-        for emoji_char, keywords in data.items():
-            codepoint = ord(emoji_char[0])
-            if 0x1F600 <= codepoint <= 0x1F64F:
-                continue  # skip classic smiley/emotion faces — too generic for news
+        keywords_resp = requests.get(EMOJI_KEYWORDS_URL, timeout=15)
+        keywords_resp.raise_for_status()
+        keywords_data = keywords_resp.json()
+
+        groups_resp = requests.get(EMOJI_GROUPS_URL, timeout=15)
+        groups_resp.raise_for_status()
+        groups_data = groups_resp.json()
+
+        for emoji_char, keywords in keywords_data.items():
+            group_info = groups_data.get(emoji_char)
+            if group_info and group_info.get("group") in EXCLUDED_GROUPS:
+                continue  # skip faces, expressions, people, body parts, gestures
+
             for keyword in keywords:
                 keyword = keyword.lower()
-                if len(keyword) < 4 or keyword in GENERIC_SKIP_WORDS:
+                if len(keyword) < 4:
                     continue
                 if keyword not in reverse_map:
                     reverse_map[keyword] = emoji_char
